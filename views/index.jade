@@ -3,3 +3,12 @@ extends layout
 block content
   h1= title
   p Welcome to #{title}
+  script(type='text/javascript' src='/javascripts/fb_login.js')
+  script(type='text/javascript' src='/javascripts/handle_login.js')
+  div(class="fb-login-button" 
+      data-width=""
+      data-size="large" 
+      data-button-type="continue_with" 
+      data-layout="default" data-auto-logout-link="true" 
+      data-use-continue-as="false" onlogin="storeAccessKey()")
+
