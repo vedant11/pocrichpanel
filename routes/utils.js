@@ -1,11 +1,17 @@
-var { getPermAcc, serPermAcc } = require('../orm');
+var {
+	getPermAcc,
+	populatePageDetails,
+	persistPages,
+	persistPosts,
+	persistComments,
+} = require('../orm');
 var knexInst = require('../knex');
 var { getReq, postReq } = require('../https');
 
 /* utils */
 
-const subToPage = ({ access_token, id }) => {
-	postReq({
+const subToPage = async ({ access_token, id }) => {
+	await postReq({
 		url: `https://graph.facebook.com/${id}/subscribed_apps?`,
 		url_params: {
 			subscribed_fields: 'feed',
@@ -13,6 +19,32 @@ const subToPage = ({ access_token, id }) => {
 		},
 		callback: (data) => {
 			console.log('did we subscribe?', data);
+		},
+	});
+	// persist access_token, id for the page against uid
+	await populatePageDetails(knexInst, id, access_token);
+	// need to get already existing posts /:pageid/feed?access_token=
+	await getReq({
+		url: `https://graph.facebook.com/${id}/feed?`,
+		url_params: {
+			access_token: access_token,
+		},
+		callback: async (response) => {
+			persistPosts(knexInst, response['data'], id);
+			console.log('posts persisted successfully');
+			for (key in response['data']) {
+				let post_id = response['data'][key]['id'];
+				await getReq({
+					url: `https://graph.facebook.com/${post_id}/comments?`,
+					url_params: {
+						access_token: access_token,
+					},
+					callback: (response) => {
+						persistComments(knexInst, response['data'], post_id);
+						console.log('comments persisted successfully');
+					},
+				});
+			}
 		},
 	});
 };
@@ -32,28 +64,28 @@ const subAllPages = async (uid) => {
 			url_params: {
 				access_token: perm_access,
 			},
-			callback: (response) => {
+			callback: async (response) => {
 				currData = response['data'];
 				for (let ky in currData) {
 					const access_token = currData[ky]['access_token'],
 						name = currData[ky]['name'],
 						id = currData[ky]['id'];
-					subToPage({
+					await subToPage({
 						access_token: access_token,
 						id: id,
 					});
 					posts[ky] = {
-						access_token: access_token,
-						name: name,
-						id: id,
+						uid: uid,
+						page_id: id,
 					};
 				}
-				JSON.stringify(posts);
+				await persistPages(posts);
 			},
 		});
+		return 0;
 	} catch (error) {
 		console.log('matching query doesnt exist', error);
-		return JSON.stringify(posts);
+		return 1;
 	}
 };
 

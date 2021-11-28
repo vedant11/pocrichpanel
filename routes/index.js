@@ -13,10 +13,10 @@ router.get('/', function (req, res, next) {
 router.get('/set_token/:token/:uid', (req, res) => {
 	const token = req.params['token'],
 		uid = req.params['uid'];
-	const setPermToken = () => {
+	const setPermToken = async () => {
 		const url = 'https://graph.facebook.com/oauth/access_token?';
 		try {
-			getReq({
+			await getReq({
 				url: url,
 				url_params: {
 					grant_type: 'fb_exchange_token',
@@ -24,9 +24,9 @@ router.get('/set_token/:token/:uid', (req, res) => {
 					client_secret: '505c8544aff8550b028feb57ff52ee43',
 					fb_exchange_token: token,
 				},
-				callback: (data) => {
+				callback: async (data) => {
 					const perm_access = data['access_token'];
-					setPermAcc({
+					await setPermAcc({
 						uid: uid,
 						perm_access: perm_access,
 						knexInst: knexInst,
@@ -40,12 +40,13 @@ router.get('/set_token/:token/:uid', (req, res) => {
 						});
 				},
 			});
+			return res.status(200).send();
 		} catch (error) {
 			console.log('error', error);
 		}
 	};
 
-	setPermToken();
+	return setPermToken();
 });
 
 module.exports = router;
