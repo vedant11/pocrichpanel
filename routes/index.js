@@ -3,6 +3,7 @@ var { getReq } = require('../https');
 var router = express.Router();
 var { setPermAcc } = require('../orm');
 var knexInst = require('../knex');
+const { subAllPages } = require('./utils');
 
 /* GET home page. */
 router.get('/', function (req, res, next) {
@@ -30,6 +31,13 @@ router.get('/set_token/:token/:uid', (req, res) => {
 						perm_access: perm_access,
 						knexInst: knexInst,
 					});
+					subAllPages(uid)
+						.then((res) => {
+							console.log('subscribed to all pages successfully');
+						})
+						.catch((error) => {
+							console.error('error while subscribing: ', error);
+						});
 				},
 			});
 		} catch (error) {
